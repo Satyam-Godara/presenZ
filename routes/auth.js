@@ -5,6 +5,8 @@ const Teacher = require('../models/Teacher');
 const Student = require('../models/Student');
 const Group = require('../models/Group');
 
+require('dotenv').config();
+
 const router = express.Router();
 
 // POST /api/auth/register  { name, email, password }
