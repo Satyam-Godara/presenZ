@@ -3,6 +3,8 @@ const { nanoid } = require('nanoid');
 const Session = require('../models/Session');
 const Attendance = require('../models/Attendance');
 const auth = require('../middleware/auth');
+const Teacher = require('../models/Teacher');
+const Group = require('../models/Group');
 
 const router = express.Router();
 
@@ -16,29 +18,128 @@ function generateToken(len) {
   return out;
 }
 
-// POST /api/session/start  { subject }  (auth required)
+// // POST /api/session/start  { subject }  (auth required)
+// router.post('/start', auth, async (req, res) => {
+//   try {
+//     const { subject } = req.body;
+//     if (!subject) return res.status(400).json({ message: 'subject is required' });
+
+//     const token = generateToken();
+//     const session = await Session.create({
+//       teacher: req.teacherId,
+//       subject,
+//       token,
+//       active: true
+//     });
+
+//     return res.status(201).json({
+//       sessionId: session._id,
+//       subject: session.subject,
+//       token: session.token,
+//       startedAt: session.startedAt
+//     });
+//   } catch (err) {
+//     console.error(err);
+//     return res.status(500).json({ message: 'Server error' });
+//   }
+// });
+
+// POST /api/session/start
+// {
+//   subject,
+//   groupId
+// }
+
 router.post('/start', auth, async (req, res) => {
   try {
-    const { subject } = req.body;
-    if (!subject) return res.status(400).json({ message: 'subject is required' });
+    const { subject, groupId } = req.body;
+
+    if (!subject || !groupId) {
+      return res.status(400).json({
+        message: 'subject and groupId are required'
+      });
+    }
+
+
+    // ----------------------------------------
+    // Get teacher
+    // ----------------------------------------
+
+    const teacher = await Teacher.findById(req.teacherId);
+
+    if (!teacher) {
+      return res.status(404).json({
+        message: 'Teacher not found'
+      });
+    }
+
+
+    // ----------------------------------------
+    // Check group exists
+    // ----------------------------------------
+
+    const group = await Group.findById(groupId);
+
+    if (!group) {
+      return res.status(404).json({
+        message: 'Group not found'
+      });
+    }
+
+
+    // ----------------------------------------
+    // Check teacher is assigned to group
+    // ----------------------------------------
+
+    const assigned = teacher.assignedGroups.some(
+      id => id.toString() === groupId.toString()
+    );
+
+    if (!assigned) {
+      return res.status(403).json({
+        code: 'GROUP_NOT_ASSIGNED',
+        message: 'You are not assigned to this group'
+      });
+    }
+
+
+    // ----------------------------------------
+    // Generate session token
+    // ----------------------------------------
 
     const token = generateToken();
+
+
+    // ----------------------------------------
+    // Create session
+    // ----------------------------------------
+
     const session = await Session.create({
-      teacher: req.teacherId,
-      subject,
+      teacher: teacher._id,
+      group: group._id,
+      subject: subject.trim(),
       token,
       active: true
     });
 
+
     return res.status(201).json({
       sessionId: session._id,
       subject: session.subject,
+
+      groupId: group._id,
+      groupName: group.name,
+
       token: session.token,
       startedAt: session.startedAt
     });
+
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ message: 'Server error' });
+
+    return res.status(500).json({
+      message: 'Server error'
+    });
   }
 });
 
@@ -102,22 +203,60 @@ router.get('/history', auth, async (req, res) => {
   }
 });
 
-// GET /api/session/by-token/:token  (public) - used by student app to resolve
-// the BLE-broadcast token into a real sessionId + subject name.
+// // GET /api/session/by-token/:token  (public) - used by student app to resolve
+// // the BLE-broadcast token into a real sessionId + subject name.
+// router.get('/by-token/:token', async (req, res) => {
+//   try {
+//     const session = await Session.findOne({ token: req.params.token, active: true }).sort({ startedAt: -1 });
+//     if (!session) return res.status(404).json({ message: 'No active session for this token' });
+
+//     return res.json({
+//       sessionId: session._id,
+//       subject: session.subject,
+//       active: session.active
+//     });
+//   } catch (err) {
+//     console.error(err);
+//     return res.status(500).json({ message: 'Server error' });
+//   }
+// });
+// GET /api/session/by-token/:token
+// Public because this is used before student authentication is
+// needed for the BLE handshake.
+
 router.get('/by-token/:token', async (req, res) => {
   try {
-    const session = await Session.findOne({ token: req.params.token, active: true }).sort({ startedAt: -1 });
-    if (!session) return res.status(404).json({ message: 'No active session for this token' });
+    const session = await Session.findOne({
+      token: req.params.token,
+      active: true
+    })
+      .populate('group', 'name')
+      .sort({ startedAt: -1 });
+
+    if (!session) {
+      return res.status(404).json({
+        message: 'No active session for this token'
+      });
+    }
 
     return res.json({
       sessionId: session._id,
       subject: session.subject,
+
+      groupId: session.group?._id || null,
+      groupName: session.group?.name || null,
+
       active: session.active
     });
+
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ message: 'Server error' });
+
+    return res.status(500).json({
+      message: 'Server error'
+    });
   }
 });
+
 
 module.exports = router;

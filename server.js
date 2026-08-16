@@ -6,6 +6,8 @@ const connectDB = require('./config/db');
 const authRoutes = require('./routes/auth');
 const sessionRoutes = require('./routes/session');
 const attendanceRoutes = require('./routes/attendance');
+const teacherRoutes = require('./routes/teacher');
+const groupRoutes = require('./routes/group');
 
 const app = express();
 
@@ -19,6 +21,8 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/session', sessionRoutes);
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/teacher', teacherRoutes);
+app.use('/api/group', groupRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ message: 'Not found' });
