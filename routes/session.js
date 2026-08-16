@@ -5,6 +5,7 @@ const Attendance = require('../models/Attendance');
 const auth = require('../middleware/auth');
 const Teacher = require('../models/Teacher');
 const Group = require('../models/Group');
+const Student = require('../models/Student');
 
 const router = express.Router();
 
@@ -256,6 +257,47 @@ router.get('/by-token/:token', async (req, res) => {
     return res.status(500).json({
       message: 'Server error'
     });
+  }
+});
+
+// GET /api/session/:id/full-attendance  (auth required)
+// Returns every student in the session's group, split into present/absent.
+router.get('/:id/full-attendance', auth, async (req, res) => {
+  try {
+    const session = await Session.findOne({ _id: req.params.id, teacher: req.teacherId })
+      .populate('group', 'name');
+
+    if (!session) return res.status(404).json({ message: 'Session not found' });
+
+    const allStudents = await Student.find({ group: session.group._id })
+      .sort({ rollNo: 1 });
+
+    const records = await Attendance.find({ session: session._id });
+    const presentMap = new Map(records.map(r => [r.rollNo, r]));
+
+    const present = [];
+    const absent = [];
+
+    allStudents.forEach(s => {
+      const record = presentMap.get(s.rollNo);
+      if (record) {
+        present.push({ rollNo: s.rollNo, name: s.name, markedAt: record.markedAt });
+      } else {
+        absent.push({ rollNo: s.rollNo, name: s.name, markedAt: null });
+      }
+    });
+
+    return res.json({
+      sessionId: session._id,
+      subject: session.subject,
+      groupName: session.group?.name || '',
+      active: session.active,
+      present,
+      absent
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'Server error' });
   }
 });
 
