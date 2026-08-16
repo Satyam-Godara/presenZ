@@ -78,7 +78,7 @@ router.post('/start', auth, async (req, res) => {
     // Check group exists
     // ----------------------------------------
     console.log(groupId);
-    const group = await Group.findOne({name:groupId});
+    const group = await Group.findById(groupId);
 
     if (!group) {
       return res.status(404).json({
