@@ -129,7 +129,7 @@ router.post('/start', auth, async (req, res) => {
 
       groupId: group._id,
       groupName: group.name,
-
+      groupCode: group.name.trim().toUpperCase(), 
       token: session.token,
       startedAt: session.startedAt
     });
@@ -245,6 +245,7 @@ router.get('/by-token/:token', async (req, res) => {
 
       groupId: session.group?._id || null,
       groupName: session.group?.name || null,
+      groupCode: session.group?.name ? session.group.name.trim().toUpperCase() : null,
 
       active: session.active
     });
