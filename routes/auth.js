@@ -154,7 +154,7 @@ router.post('/student/login', async (req, res) => {
         id: student._id,
         role: 'student'
       },
-      JWT_SECRET,
+      process.env.JWT_SECRET || 'change_this_secret_in_production',
       {
         expiresIn: '30d'
       }
@@ -306,7 +306,7 @@ router.post('/student/register', async (req, res) => {
         id: student._id,
         role: 'student'
       },
-      JWT_SECRET,
+      process.env.JWT_SECRET || 'change_this_secret_in_production',
       {
         expiresIn: '30d'
       }
