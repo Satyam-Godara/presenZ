@@ -40,7 +40,8 @@ async function seed() {
 
             if (!group) {
                 group = await Group.create({
-                    name
+                    name,
+                    code:name
                 });
 
                 console.log(`Created group: ${name}`);
