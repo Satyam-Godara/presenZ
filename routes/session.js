@@ -185,7 +185,7 @@ router.get('/:id/attendance', auth, async (req, res) => {
 // GET /api/session/history  (auth required) - teacher's past sessions
 router.get('/history', auth, async (req, res) => {
   try {
-    const sessions = await Session.find({ teacher: req.teacherId }).sort({ startedAt: -1 }).limit(100);
+    const sessions = await Session.find({ teacher: req.teacherId }).populate('group','name').sort({ startedAt: -1 }).limit(100);
     const result = await Promise.all(sessions.map(async (s) => {
       const count = await Attendance.countDocuments({ session: s._id });
       return {
@@ -194,7 +194,8 @@ router.get('/history', auth, async (req, res) => {
         active: s.active,
         startedAt: s.startedAt,
         endedAt: s.endedAt,
-        presentCount: count
+        presentCount: count,
+        group: s.group?.name
       };
     }));
     return res.json(result);
